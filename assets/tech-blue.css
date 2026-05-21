@@ -13,22 +13,6 @@
   stroke-width: 1.5px !important;
 }
 
-/* Node fills by classDef category — blue palette */
-#my-svg .node.client rect,
-#my-svg .node.client path { fill: #dbeafe !important; stroke: #1d4ed8 !important; stroke-width: 2px !important; }
-#my-svg .node.gateway rect,
-#my-svg .node.gateway path { fill: #e0e7ff !important; stroke: #4338ca !important; stroke-width: 2px !important; }
-#my-svg .node.service rect,
-#my-svg .node.service path { fill: #cffafe !important; stroke: #0e7490 !important; stroke-width: 2px !important; }
-#my-svg .node.data rect,
-#my-svg .node.data path { fill: #ede9fe !important; stroke: #6d28d9 !important; stroke-width: 2px !important; }
-#my-svg .node.monitor rect,
-#my-svg .node.monitor path { fill: #ccfbf1 !important; stroke: #0f766e !important; stroke-width: 2px !important; }
-
-/* Default node fill */
-#my-svg .node.default rect,
-#my-svg .node.default path { fill: #f0f9ff !important; stroke: #0284c7 !important; stroke-width: 1.5px !important; }
-
 /* Subgraphs: transparent background + dashed border */
 #my-svg .cluster rect {
   rx: 14 !important;

@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 /**
- * Post-process Mermaid SVG: inject CSS + strip inline fills + uniform node sizes.
- * NO cluster alignment. NO node/edge moving.
+ * Post-process Mermaid SVG: inject CSS + uniform node sizes.
+ * NO cluster alignment. NO node/edge moving. NO inline style stripping.
  *
- * Mermaid 11.15+ puts classDef colors as inline style="fill:... !important;stroke:... !important"
- * which overrides any CSS. We strip those inline fills so CSS themes take full control.
+ * Why NOT strip inline styles:
+ *   Mermaid 11.15+ puts classDef colors as inline style="fill:... !important"
+ *   which overrides all CSS. CSS .node.client rect with !important cannot win.
+ *   Instead, we keep classDef's inline fills (they are the correct colors per theme),
+ *   and CSS only controls: text color, edge color, subgraph bg, fonts.
+ *   Dark mode works because text/edge/subgraph colors are set via CSS on non-inline elements.
  *
  * Usage: node postprocess.cjs <input.svg> <css_file> [output.svg]
  */
@@ -28,36 +32,7 @@ const css = fs.readFileSync(path.resolve(cssPath), 'utf8');
 // 1. Inject CSS before </style>
 svg = svg.replace('</style>', '\n' + css + '\n</style>');
 
-// 2. Strip inline fill/stroke from node label-containers (rect and cylinder path)
-//    Mermaid 11.15+ puts classDef colors inline with !important, blocking CSS themes.
-//    We remove them so CSS .node.<category> selectors take over.
-svg = svg.replace(
-  /(<rect\s+class="basic label-container"\s+style=")([^"]*?)(")/g,
-  (match, prefix, styleStr, suffix) => {
-    const cleaned = styleStr
-      .replace(/fill:[^;"]*!important;?/g, '')
-      .replace(/stroke:[^;"]*!important;?/g, '')
-      .replace(/stroke-width:[^;"]*!important;?/g, '')
-      .replace(/;{2,}/g, ';')
-      .replace(/;\s*"/, '"');
-    return prefix + cleaned + suffix;
-  }
-);
-
-svg = svg.replace(
-  /(<path\s+class="basic label-container outer-path"\s+style=")([^"]*?)(")/g,
-  (match, prefix, styleStr, suffix) => {
-    const cleaned = styleStr
-      .replace(/fill:[^;"]*!important;?/g, '')
-      .replace(/stroke:[^;"]*!important;?/g, '')
-      .replace(/stroke-width:[^;"]*!important;?/g, '')
-      .replace(/;{2,}/g, ';')
-      .replace(/;\s*"/, '"');
-    return prefix + cleaned + suffix;
-  }
-);
-
-// 3. Uniform node sizes per category
+// 2. Uniform node sizes per category
 const pattern = /<g class="node default (\w+)"[^>]*?id="my-svg-flowchart-\w+-\d+"[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs;
 
 const catEntries = {};
