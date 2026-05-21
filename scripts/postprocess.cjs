@@ -8,6 +8,8 @@
  *
  * Light mode: keep classDef inline fills unchanged.
  *
+ * FAIL-SAFE: warns but never crashes on unexpected SVG structure.
+ *
  * Usage: node postprocess.cjs <input.svg> <css_file> [output.svg]
  */
 'use strict';
@@ -27,72 +29,133 @@ if (!svgPath || !cssPath) {
 let svg = fs.readFileSync(path.resolve(svgPath), 'utf8');
 const css = fs.readFileSync(path.resolve(cssPath), 'utf8');
 const isDark = path.basename(cssPath).toLowerCase().includes('dark');
+const warnings = [];
 
-// 1. Inject CSS before </style>
-svg = svg.replace('</style>', '\n' + css + '\n</style>');
+// ---- Step 1: Inject CSS before </style> ----
+if (!svg.includes('</style>')) {
+  warnings.push('WARN: No </style> tag found — CSS injection skipped');
+} else {
+  svg = svg.replace('</style>', '\n' + css + '\n</style>');
+}
 
-// 2. Dark mode: replace inline fills with darkened versions
+// ---- Step 2: Dark mode — replace inline fills with darkened versions ----
+let fillMap = {};
 if (isDark) {
-  // Collect unique fill values from label-container inline styles
-  const fillRegex = /class="[^"]*label-container[^"]*"\s+style="([^"]*)"/g;
+  // Strategy: find ANY inline fill on elements, not just label-container
+  // Fallback chain: label-container → node rect → any rect/path with fill
+  let fillMatchCount = 0;
+
+  // Collect unique fill values from inline styles
+  const fillRegex = /style="([^"]*fill:(#[0-9a-fA-F]+)\s*!important[^"]*)"/g;
   const lightFills = new Set();
   let m;
   while ((m = fillRegex.exec(svg)) !== null) {
-    const fm = m[1].match(/fill:(#[0-9a-fA-F]+)\s*!important/);
-    if (fm) lightFills.add(fm[1].toLowerCase());
+    lightFills.add(m[2].toLowerCase());
   }
   fillRegex.lastIndex = 0;
 
-  // Build fill mapping: light → dark
-  const fillMap = {};
-  for (const light of lightFills) {
-    fillMap[light] = darkenHex(light, 0.3); // keep 30% of original lightness
+  if (lightFills.size === 0) {
+    // Fallback: try without !important
+    const fbRegex = /style="([^"]*fill:(#[0-9a-fA-F]+)[^"]*)"/g;
+    while ((m = fbRegex.exec(svg)) !== null) {
+      // Skip fills that are "none", "transparent", or Mermaid internal colors
+      const hex = m[2].toLowerCase();
+      if (hex !== '#000000' && hex !== '#ffffff' && hex !== '#none') {
+        lightFills.add(hex);
+      }
+    }
+    fbRegex.lastIndex = 0;
+    if (lightFills.size === 0) {
+      warnings.push('WARN: No inline fill values found — dark fill replacement skipped');
+    }
   }
 
-  // Apply replacements
-  svg = svg.replace(
-    /class="[^"]*label-container[^"]*"\s+style="([^"]*)"/g,
-    (match, styleContent) => {
-      const fm = styleContent.match(/fill:(#[0-9a-fA-F]+)\s*!important/);
-      if (fm) {
-        const darkFill = fillMap[fm[1].toLowerCase()];
+  // Build fill mapping: light → dark
+  for (const light of lightFills) {
+    fillMap[light] = darkenHex(light, 0.3);
+  }
+
+  // Apply replacements: try !important version first, then plain
+  if (Object.keys(fillMap).length > 0) {
+    // With !important
+    svg = svg.replace(
+      /style="([^"]*fill:)(#[0-9a-fA-F]+)(\s*!important[^"]*)"/g,
+      (match, prefix, hex, suffix) => {
+        const darkFill = fillMap[hex.toLowerCase()];
         if (darkFill) {
-          const newStyle = styleContent.replace(
-            /fill:#[0-9a-fA-F]+\s*!important/,
-            `fill:${darkFill} !important`
-          );
-          return match.replace(styleContent, newStyle);
+          fillMatchCount++;
+          return `style="${prefix}${darkFill}${suffix}"`;
         }
+        return match;
       }
-      return match;
+    );
+
+    // Without !important (for elements that don't use it)
+    svg = svg.replace(
+      /style="([^"]*fill:)(#[0-9a-fA-F]+)([^"!]*")"/g,
+      (match, prefix, hex, suffix) => {
+        // Skip if already replaced (contains our dark fills)
+        if (fillMap[hex.toLowerCase()] === undefined) return match;
+        // Skip black/white/transparent
+        const l = hex.toLowerCase();
+        if (l === '#000000' || l === '#ffffff' || l === '#none') return match;
+        const darkFill = fillMap[l];
+        if (darkFill) {
+          fillMatchCount++;
+          return `style="${prefix}${darkFill}${suffix}`;
+        }
+        return match;
+      }
+    );
+
+    if (fillMatchCount === 0) {
+      warnings.push('WARN: Dark fills computed but 0 replacements applied — SVG structure may have changed');
     }
-  );
+  }
 }
 
-// 3. Uniform node sizes per category
-const pattern = /<g class="node default (\w+)"[^>]*?id="my-svg-flowchart-\w+-\d+"[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs;
+// ---- Step 3: Uniform node sizes per category ----
+// Try primary pattern, fallback to looser match
+let sizeFixed = 0;
+const patterns = [
+  // Primary: node default CATEGORY with flowchart ID
+  /<g class="node default (\w+)"[^>]*?id="[^"]*flowchart[^"]*"[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs,
+  // Fallback 1: node default CATEGORY without flowchart ID
+  /<g class="node default (\w+)"[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs,
+  // Fallback 2: any node with class containing a category
+  /<g class="node[^"]*"?[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs,
+];
 
 const catEntries = {};
-let match;
+let matched = false;
 
-pattern.lastIndex = 0;
-while ((match = pattern.exec(svg)) !== null) {
-  const cat = match[1];
-  const attrs = match[2];
+for (const pattern of patterns) {
+  pattern.lastIndex = 0;
+  let match;
+  while ((match = pattern.exec(svg)) !== null) {
+    matched = true;
+    const cat = match[1] || 'default';
+    const attrs = match[2];
 
-  const wMatch = attrs.match(/width="([^"]*)"/);
-  const hMatch = attrs.match(/height="([^"]*)"/);
-  if (wMatch && hMatch) {
-    if (!catEntries[cat]) catEntries[cat] = [];
-    catEntries[cat].push({
-      full: match[0],
-      prefix: match[0].substring(0, match[0].length - match[2].length - match[3].length),
-      attrs,
-      suffix: match[3],
-      w: parseFloat(wMatch[1]),
-      h: parseFloat(hMatch[1]),
-    });
+    const wMatch = attrs.match(/width="([^"]*)"/);
+    const hMatch = attrs.match(/height="([^"]*)"/);
+    if (wMatch && hMatch) {
+      if (!catEntries[cat]) catEntries[cat] = [];
+      catEntries[cat].push({
+        full: match[0],
+        prefix: match[0].substring(0, match[0].length - match[2].length - match[3].length),
+        attrs,
+        suffix: match[3],
+        w: parseFloat(wMatch[1]),
+        h: parseFloat(hMatch[1]),
+      });
+    }
   }
+  if (matched) break;
+}
+
+if (!matched) {
+  warnings.push('WARN: No node <rect> elements matched — size unification skipped');
 }
 
 for (const [cat, entries] of Object.entries(catEntries)) {
@@ -110,21 +173,27 @@ for (const [cat, entries] of Object.entries(catEntries)) {
       const old = e.full;
       const replacement = e.prefix + newAttrs + e.suffix;
       svg = svg.replace(old, replacement);
+      sizeFixed++;
     }
   }
 }
 
+// ---- Write output ----
 fs.writeFileSync(path.resolve(outPath), svg);
-console.log('Done:', outPath);
+
+// ---- Report ----
+if (warnings.length > 0) {
+  console.error('postprocess.cjs warnings:');
+  warnings.forEach(w => console.error('  ' + w));
+}
+console.log('Done:', outPath, isDark ? `(dark: ${Object.keys(fillMap || {}).length} colors mapped)` : '(light)', sizeFixed > 0 ? `(${sizeFixed} rects resized)` : '');
 
 // --- Helper: darken a hex color by keeping a fraction of lightness ---
 function darkenHex(hex, keepRatio) {
-  // Parse hex to RGB
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
 
-  // Convert to HSL
   const rn = r / 255, gn = g / 255, bn = b / 255;
   const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
   let h, s, l = (max + min) / 2;
@@ -141,10 +210,7 @@ function darkenHex(hex, keepRatio) {
     }
   }
 
-  // Reduce lightness to a dark range (8-18%)
   const darkL = 0.08 + (l * keepRatio) * 0.10;
-
-  // Convert back to RGB
   const [dr, dg, db] = hslToRgb(h, s, darkL);
   return '#' + [dr, dg, db].map(v => v.toString(16).padStart(2, '0')).join('');
 }
