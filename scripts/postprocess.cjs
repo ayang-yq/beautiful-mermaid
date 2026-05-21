@@ -2,12 +2,9 @@
 /**
  * Post-process Mermaid SVG: inject CSS + uniform node sizes + dark mode fill override.
  *
- * Dark mode: replace inline fill PER CATEGORY with dark variants.
- *   client  → #3b1530 (dark rose)    stroke stays #c62828
- *   gateway → #3b2a10 (dark amber)   stroke stays #e65100
- *   service → #102a3b (dark blue)    stroke stays #1565c0
- *   data    → #2a1035 (dark purple)  stroke stays #7b1fa2
- *   monitor → #0f2a10 (dark green)   stroke stays #2e7d32
+ * Dark mode: auto-derive dark fills from classDef colors.
+ *   Reads inline fill values from SVG, darkens them by reducing lightness.
+ *   Works with ANY classDef names — no hardcoded category list.
  *
  * Light mode: keep classDef inline fills unchanged.
  *
@@ -34,34 +31,42 @@ const isDark = path.basename(cssPath).toLowerCase().includes('dark');
 // 1. Inject CSS before </style>
 svg = svg.replace('</style>', '\n' + css + '\n</style>');
 
-// 2. Dark mode: replace inline fills per category
+// 2. Dark mode: replace inline fills with darkened versions
 if (isDark) {
-  const darkFills = {
-    client:  '#3b1530',
-    gateway: '#3b2a10',
-    service: '#102a3b',
-    data:    '#2a1035',
-    monitor: '#0f2a10',
-  };
-  const defaultDark = '#1e293b';
-
-  // Strategy: find each node <g class="node default CATEGORY" ...>
-  // then find its label-container rect/path inside and replace fill
-  for (const [cat, fill] of Object.entries(darkFills)) {
-    // Match <g class="node default CATEGORY" ...> ... <rect/path class="...label-container..." style="fill:... !important..." ...>
-    const nodeRegex = new RegExp(
-      `<g class="node default ${cat}"[^>]*>[\\s\\S]*?` +
-      `class="[^"]*label-container[^"]*"\\s+style="([^"]*)"`,
-      'g'
-    );
-    svg = svg.replace(nodeRegex, (match, styleContent) => {
-      const newStyle = styleContent.replace(
-        /fill:#[0-9a-fA-F]+\s*!important/,
-        `fill:${fill} !important`
-      );
-      return match.replace(styleContent, newStyle);
-    });
+  // Collect unique fill values from label-container inline styles
+  const fillRegex = /class="[^"]*label-container[^"]*"\s+style="([^"]*)"/g;
+  const lightFills = new Set();
+  let m;
+  while ((m = fillRegex.exec(svg)) !== null) {
+    const fm = m[1].match(/fill:(#[0-9a-fA-F]+)\s*!important/);
+    if (fm) lightFills.add(fm[1].toLowerCase());
   }
+  fillRegex.lastIndex = 0;
+
+  // Build fill mapping: light → dark
+  const fillMap = {};
+  for (const light of lightFills) {
+    fillMap[light] = darkenHex(light, 0.3); // keep 30% of original lightness
+  }
+
+  // Apply replacements
+  svg = svg.replace(
+    /class="[^"]*label-container[^"]*"\s+style="([^"]*)"/g,
+    (match, styleContent) => {
+      const fm = styleContent.match(/fill:(#[0-9a-fA-F]+)\s*!important/);
+      if (fm) {
+        const darkFill = fillMap[fm[1].toLowerCase()];
+        if (darkFill) {
+          const newStyle = styleContent.replace(
+            /fill:#[0-9a-fA-F]+\s*!important/,
+            `fill:${darkFill} !important`
+          );
+          return match.replace(styleContent, newStyle);
+        }
+      }
+      return match;
+    }
+  );
 }
 
 // 3. Uniform node sizes per category
@@ -111,3 +116,58 @@ for (const [cat, entries] of Object.entries(catEntries)) {
 
 fs.writeFileSync(path.resolve(outPath), svg);
 console.log('Done:', outPath);
+
+// --- Helper: darken a hex color by keeping a fraction of lightness ---
+function darkenHex(hex, keepRatio) {
+  // Parse hex to RGB
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+
+  // Convert to HSL
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case rn: h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6; break;
+      case gn: h = ((bn - rn) / d + 2) / 6; break;
+      case bn: h = ((rn - gn) / d + 4) / 6; break;
+    }
+  }
+
+  // Reduce lightness to a dark range (8-18%)
+  const darkL = 0.08 + (l * keepRatio) * 0.10;
+
+  // Convert back to RGB
+  const [dr, dg, db] = hslToRgb(h, s, darkL);
+  return '#' + [dr, dg, db].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hueToRgb(p, q, h + 1/3);
+    g = hueToRgb(p, q, h);
+    b = hueToRgb(p, q, h - 1/3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function hueToRgb(p, q, t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1/6) return p + (q - p) * 6 * t;
+  if (t < 1/2) return q;
+  if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+  return p;
+}
