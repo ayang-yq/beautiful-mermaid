@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 /**
- * Post-process Mermaid SVG: inject CSS + uniform node sizes.
- * NO cluster alignment. NO node/edge moving. NO inline style stripping.
+ * Post-process Mermaid SVG: inject CSS + uniform node sizes + dark mode fill override.
+ * NO cluster alignment. NO node/edge moving.
  *
- * Why NOT strip inline styles:
- *   Mermaid 11.15+ puts classDef colors as inline style="fill:... !important"
- *   which overrides all CSS. CSS .node.client rect with !important cannot win.
- *   Instead, we keep classDef's inline fills (they are the correct colors per theme),
- *   and CSS only controls: text color, edge color, subgraph bg, fonts.
- *   Dark mode works because text/edge/subgraph colors are set via CSS on non-inline elements.
+ * Dark mode: postprocess replaces inline fill values directly in SVG elements.
+ * Light mode: keeps classDef inline fills unchanged.
  *
  * Usage: node postprocess.cjs <input.svg> <css_file> [output.svg]
  */
@@ -28,11 +24,25 @@ if (!svgPath || !cssPath) {
 
 let svg = fs.readFileSync(path.resolve(svgPath), 'utf8');
 const css = fs.readFileSync(path.resolve(cssPath), 'utf8');
+const isDark = path.basename(cssPath).toLowerCase().includes('dark');
 
 // 1. Inject CSS before </style>
 svg = svg.replace('</style>', '\n' + css + '\n</style>');
 
-// 2. Uniform node sizes per category
+// 2. Dark mode: replace inline fill values on node label-containers
+//    Mermaid 11.15+ writes: style="fill:#fce4ec !important;stroke:#c62828 !important;..."
+//    We replace fill with dark color, keep stroke for category distinction.
+if (isDark) {
+  const darkFill = '#1e293b';
+  svg = svg.replace(
+    /class="[^"]*label-container[^"]*"\s+style="([^"]*)"/g,
+    (match) => {
+      return match.replace(/fill:#[0-9a-fA-F]+\s*!important/, `fill:${darkFill} !important`);
+    }
+  );
+}
+
+// 3. Uniform node sizes per category
 const pattern = /<g class="node default (\w+)"[^>]*?id="my-svg-flowchart-\w+-\d+"[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs;
 
 const catEntries = {};

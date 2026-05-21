@@ -39,13 +39,13 @@
   font-weight: 600 !important;
 }
 
-/* Node text — dark color works on light classDef fills */
+/* Node text — white on dark fills */
 #my-svg .label text,
 #my-svg .label span,
 #my-svg .node .label text {
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
-  fill: #1e293b !important;
-  color: #1e293b !important;
+  fill: #f1f5f9 !important;
+  color: #f1f5f9 !important;
   font-size: 13px !important;
   font-weight: 500 !important;
 }
