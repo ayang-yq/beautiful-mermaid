@@ -1,0 +1,71 @@
+/* elegant.css — white background default theme | mixed fonts | transparent subgraphs */
+
+#my-svg {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
+}
+
+/* Nodes: rounded corners */
+#my-svg .node rect,
+#my-svg .node polygon,
+#my-svg .node circle {
+  rx: 8 !important;
+  ry: 8 !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Subgraphs: transparent background + dashed border */
+#my-svg .cluster rect {
+  rx: 14 !important;
+  ry: 14 !important;
+  fill: transparent !important;
+  stroke: #cbd5e1 !important;
+  stroke-width: 1px !important;
+  stroke-dasharray: 6 3 !important;
+}
+
+/* Subgraph labels */
+#my-svg .cluster-label text,
+#my-svg .cluster-label span {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
+  fill: #64748b !important;
+  color: #64748b !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* Node text */
+#my-svg .label text,
+#my-svg .label span,
+#my-svg .node .label text {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
+  fill: #1e293b !important;
+  color: #1e293b !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* Edge labels: monospace */
+#my-svg .edgeLabel,
+#my-svg .edgeLabel text,
+#my-svg .edgeLabel span {
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", "Source Code Pro", "Consolas", monospace !important;
+  fill: #64748b !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+}
+#my-svg .edgeLabel rect {
+  fill: rgba(255,255,255,0.85) !important;
+}
+
+/* Edges */
+#my-svg .edgePath .path {
+  stroke: #94a3b8 !important;
+  stroke-width: 1.5px !important;
+  stroke-linejoin: round !important;
+}
+
+/* Arrows */
+#my-svg .marker path {
+  fill: #94a3b8 !important;
+  stroke: #94a3b8 !important;
+}

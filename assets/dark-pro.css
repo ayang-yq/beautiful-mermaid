@@ -1,0 +1,74 @@
+/* dark-pro.css — dark theme
+   Use with -t dark -b '#0f172a'
+   Strategy: keep classDef's light fill, switch text to dark color
+*/
+
+#my-svg {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
+}
+
+/* Nodes: rounded corners */
+#my-svg .node rect,
+#my-svg .node polygon,
+#my-svg .node circle {
+  rx: 8 !important;
+  ry: 8 !important;
+  stroke-width: 2px !important;
+}
+
+/* Subgraphs: transparent background + dashed border */
+#my-svg .cluster rect {
+  rx: 14 !important;
+  ry: 14 !important;
+  fill: transparent !important;
+  stroke: #475569 !important;
+  stroke-width: 1px !important;
+  stroke-dasharray: 6 3 !important;
+}
+
+/* Subgraph labels */
+#my-svg .cluster-label text,
+#my-svg .cluster-label span {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
+  fill: #94a3b8 !important;
+  color: #94a3b8 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* Node text — dark color (readable on light fill) */
+#my-svg .label text,
+#my-svg .label span,
+#my-svg .node .label text {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
+  fill: #1e293b !important;
+  color: #1e293b !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* Edge labels */
+#my-svg .edgeLabel,
+#my-svg .edgeLabel text,
+#my-svg .edgeLabel span {
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", "Source Code Pro", "Consolas", monospace !important;
+  fill: #94a3b8 !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+}
+#my-svg .edgeLabel rect {
+  fill: rgba(15, 23, 42, 0.85) !important;
+}
+
+/* Edges */
+#my-svg .edgePath .path {
+  stroke: #64748b !important;
+  stroke-width: 1.5px !important;
+  stroke-linejoin: round !important;
+}
+
+/* Arrows */
+#my-svg .marker path {
+  fill: #64748b !important;
+  stroke: #64748b !important;
+}
