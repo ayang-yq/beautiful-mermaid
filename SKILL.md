@@ -1,24 +1,24 @@
 ---
 name: mermaid
 description: "Generate diagrams with Mermaid declarative syntax — flowcharts, architecture, sequence, Gantt, ER, mindmaps, etc. Write text, auto-layout, no manual coordinates."
-version: 5.1.0
+version: 6.0.0
 author: beautiful-mermaid contributors
 dependencies:
   - "@mermaid-js/mermaid-cli (mmdc)"
-  - "puppeteer (for svg2png.cjs)"
+  - "puppeteer (bundled with mmdc, auto-resolved)"
 platforms: [linux, macos, windows]
 tags: [mermaid, diagrams, flowchart, sequence, architecture, visualization]
+repo: https://github.com/ayang-yq/beautiful-mermaid
 ---
 
-# Mermaid Diagram Skill v5.1
+# Mermaid Diagram Skill v6.0
 
-Write Mermaid text → mmdc renders SVG → CSS inject → Puppeteer converts PNG.
+All-Node.js pipeline: Write Mermaid text → mmdc renders SVG → postprocess.cjs injects CSS → svg2png.cjs converts PNG.
 
 ## Prerequisites
 
 ```bash
-mmdc --version  # 11.15.0+
-node -e "require('puppeteer')"  # svg2png dependency
+mmdc --version  # 11.15.0+ (bundles puppeteer automatically)
 ```
 
 ## Core Principles
@@ -45,7 +45,6 @@ node -e "require('puppeteer')"  # svg2png dependency
 ## Render Commands (3 steps)
 
 ```bash
-# Set paths relative to this repo
 CSS=./assets/elegant.css
 SCRIPTS=./scripts
 
@@ -137,7 +136,7 @@ In flowchart LR, multiple subgraphs + dashed links + isolated nodes cause dagre 
 |--------|---------|
 | `scripts/postprocess.cjs <svg> <css> [out.svg]` | CSS inject (to end of style block) + uniform node rects (no coordinate moves) |
 | `scripts/svg2png.cjs <svg> <png> [scale]` | Puppeteer SVG→PNG (2x default) |
-| `scripts/validate-mermaid.cjs <file.mmd>` | Syntax validation |
+| `scripts/validate-mermaid.cjs <file.mmd>` | Syntax validation (cross-platform Node.js) |
 
 ## Output
 
@@ -161,9 +160,9 @@ mermaid/
     tech-blue.css             ← tech blue theme
     warm-pro.css              ← warm business theme
   scripts/
-    postprocess.cjs            ← CSS inject + node size uniforming
+    postprocess.cjs            ← CSS inject + node size uniforming (Node.js)
     svg2png.cjs               ← Puppeteer PNG conversion
-    validate-mermaid.cjs       ← syntax validation
+    validate-mermaid.cjs      ← syntax validation (Node.js, cross-platform)
   references/                 ← load on demand
     syntax-flowchart.md
     syntax-sequence.md

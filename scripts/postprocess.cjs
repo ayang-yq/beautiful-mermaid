@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
- * Post-process Mermaid SVG: inject CSS + uniform node sizes per category.
+ * Post-process Mermaid SVG: inject CSS + strip inline fills + uniform node sizes.
  * NO cluster alignment. NO node/edge moving.
+ *
+ * Mermaid 11.15+ puts classDef colors as inline style="fill:... !important;stroke:... !important"
+ * which overrides any CSS. We strip those inline fills so CSS themes take full control.
  *
  * Usage: node postprocess.cjs <input.svg> <css_file> [output.svg]
  */
@@ -25,14 +28,41 @@ const css = fs.readFileSync(path.resolve(cssPath), 'utf8');
 // 1. Inject CSS before </style>
 svg = svg.replace('</style>', '\n' + css + '\n</style>');
 
-// 2. Uniform node sizes per category
-// Match: <g class="node default <category>" ... transform="translate(...)"> ... <rect .../>
+// 2. Strip inline fill/stroke from node label-containers (rect and cylinder path)
+//    Mermaid 11.15+ puts classDef colors inline with !important, blocking CSS themes.
+//    We remove them so CSS .node.<category> selectors take over.
+svg = svg.replace(
+  /(<rect\s+class="basic label-container"\s+style=")([^"]*?)(")/g,
+  (match, prefix, styleStr, suffix) => {
+    const cleaned = styleStr
+      .replace(/fill:[^;"]*!important;?/g, '')
+      .replace(/stroke:[^;"]*!important;?/g, '')
+      .replace(/stroke-width:[^;"]*!important;?/g, '')
+      .replace(/;{2,}/g, ';')
+      .replace(/;\s*"/, '"');
+    return prefix + cleaned + suffix;
+  }
+);
+
+svg = svg.replace(
+  /(<path\s+class="basic label-container outer-path"\s+style=")([^"]*?)(")/g,
+  (match, prefix, styleStr, suffix) => {
+    const cleaned = styleStr
+      .replace(/fill:[^;"]*!important;?/g, '')
+      .replace(/stroke:[^;"]*!important;?/g, '')
+      .replace(/stroke-width:[^;"]*!important;?/g, '')
+      .replace(/;{2,}/g, ';')
+      .replace(/;\s*"/, '"');
+    return prefix + cleaned + suffix;
+  }
+);
+
+// 3. Uniform node sizes per category
 const pattern = /<g class="node default (\w+)"[^>]*?id="my-svg-flowchart-\w+-\d+"[^>]*?transform="translate\([^)]+\)"[^>]*?>.*?<rect\s([^>]*?)(\/?>)/gs;
 
 const catEntries = {};
 let match;
 
-// Reset lastIndex for global regex
 pattern.lastIndex = 0;
 while ((match = pattern.exec(svg)) !== null) {
   const cat = match[1];

@@ -1,6 +1,6 @@
 /* dark-pro.css — dark theme
    Use with -t dark -b '#0f172a'
-   Strategy: keep classDef's light fill, switch text to dark color
+   Strategy: dark fill on nodes, light text, muted edges
 */
 
 #my-svg {
@@ -15,6 +15,22 @@
   ry: 8 !important;
   stroke-width: 2px !important;
 }
+
+/* Node fills by classDef category — dark variants */
+#my-svg .node.client rect,
+#my-svg .node.client path { fill: #3b1530 !important; stroke: #ef5350 !important; stroke-width: 2px !important; }
+#my-svg .node.gateway rect,
+#my-svg .node.gateway path { fill: #3b2a10 !important; stroke: #ff9800 !important; stroke-width: 2px !important; }
+#my-svg .node.service rect,
+#my-svg .node.service path { fill: #102a3b !important; stroke: #42a5f5 !important; stroke-width: 2px !important; }
+#my-svg .node.data rect,
+#my-svg .node.data path { fill: #2a1035 !important; stroke: #ab47bc !important; stroke-width: 2px !important; }
+#my-svg .node.monitor rect,
+#my-svg .node.monitor path { fill: #0f2a10 !important; stroke: #66bb6a !important; stroke-width: 2px !important; }
+
+/* Default node fill (no category) */
+#my-svg .node.default rect,
+#my-svg .node.default path { fill: #1e293b !important; stroke: #64748b !important; stroke-width: 1.5px !important; }
 
 /* Subgraphs: transparent background + dashed border */
 #my-svg .cluster rect {
@@ -36,13 +52,13 @@
   font-weight: 600 !important;
 }
 
-/* Node text — dark color (readable on light fill) */
+/* Node text — light on dark */
 #my-svg .label text,
 #my-svg .label span,
 #my-svg .node .label text {
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
-  fill: #1e293b !important;
-  color: #1e293b !important;
+  fill: #e2e8f0 !important;
+  color: #e2e8f0 !important;
   font-size: 13px !important;
   font-weight: 500 !important;
 }

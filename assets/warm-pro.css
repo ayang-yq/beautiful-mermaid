@@ -13,12 +13,28 @@
   stroke-width: 1.5px !important;
 }
 
+/* Node fills by classDef category — warm palette */
+#my-svg .node.client rect,
+#my-svg .node.client path { fill: #fef3c7 !important; stroke: #d97706 !important; stroke-width: 2px !important; }
+#my-svg .node.gateway rect,
+#my-svg .node.gateway path { fill: #ffedd5 !important; stroke: #ea580c !important; stroke-width: 2px !important; }
+#my-svg .node.service rect,
+#my-svg .node.service path { fill: #fef9c3 !important; stroke: #ca8a04 !important; stroke-width: 2px !important; }
+#my-svg .node.data rect,
+#my-svg .node.data path { fill: #fce7f3 !important; stroke: #db2777 !important; stroke-width: 2px !important; }
+#my-svg .node.monitor rect,
+#my-svg .node.monitor path { fill: #ecfccb !important; stroke: #65a30d !important; stroke-width: 2px !important; }
+
+/* Default node fill */
+#my-svg .node.default rect,
+#my-svg .node.default path { fill: #fffbeb !important; stroke: #b45309 !important; stroke-width: 1.5px !important; }
+
 /* Subgraphs: transparent background + dashed border */
 #my-svg .cluster rect {
   rx: 14 !important;
   ry: 14 !important;
   fill: transparent !important;
-  stroke: #fbbf24 !important;
+  stroke: #d6d3d1 !important;
   stroke-width: 1px !important;
   stroke-dasharray: 6 3 !important;
 }
@@ -27,8 +43,8 @@
 #my-svg .cluster-label text,
 #my-svg .cluster-label span {
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
-  fill: #92400e !important;
-  color: #92400e !important;
+  fill: #78716c !important;
+  color: #78716c !important;
   font-size: 14px !important;
   font-weight: 600 !important;
 }
@@ -38,8 +54,8 @@
 #my-svg .label span,
 #my-svg .node .label text {
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "WenQuanYi Zen Hei", system-ui, -apple-system, sans-serif !important;
-  fill: #451a03 !important;
-  color: #451a03 !important;
+  fill: #44403c !important;
+  color: #44403c !important;
   font-size: 13px !important;
   font-weight: 500 !important;
 }
@@ -49,8 +65,8 @@
 #my-svg .edgeLabel text,
 #my-svg .edgeLabel span {
   font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", "Source Code Pro", "Consolas", monospace !important;
-  fill: #b45309 !important;
-  color: #b45309 !important;
+  fill: #a8a29e !important;
+  color: #a8a29e !important;
   font-size: 11px !important;
 }
 #my-svg .edgeLabel rect {
@@ -59,13 +75,13 @@
 
 /* Edges */
 #my-svg .edgePath .path {
-  stroke: #fbbf24 !important;
+  stroke: #d6d3d1 !important;
   stroke-width: 1.5px !important;
   stroke-linejoin: round !important;
 }
 
 /* Arrows */
 #my-svg .marker path {
-  fill: #fbbf24 !important;
-  stroke: #fbbf24 !important;
+  fill: #d6d3d1 !important;
+  stroke: #d6d3d1 !important;
 }
