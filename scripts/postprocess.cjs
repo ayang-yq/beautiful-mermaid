@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 /**
  * Post-process Mermaid SVG: inject CSS + uniform node sizes + dark mode fill override.
- * NO cluster alignment. NO node/edge moving.
  *
- * Dark mode: postprocess replaces inline fill values directly in SVG elements.
- * Light mode: keeps classDef inline fills unchanged.
+ * Dark mode: replace inline fill PER CATEGORY with dark variants.
+ *   client  → #3b1530 (dark rose)    stroke stays #c62828
+ *   gateway → #3b2a10 (dark amber)   stroke stays #e65100
+ *   service → #102a3b (dark blue)    stroke stays #1565c0
+ *   data    → #2a1035 (dark purple)  stroke stays #7b1fa2
+ *   monitor → #0f2a10 (dark green)   stroke stays #2e7d32
+ *
+ * Light mode: keep classDef inline fills unchanged.
  *
  * Usage: node postprocess.cjs <input.svg> <css_file> [output.svg]
  */
@@ -29,17 +34,34 @@ const isDark = path.basename(cssPath).toLowerCase().includes('dark');
 // 1. Inject CSS before </style>
 svg = svg.replace('</style>', '\n' + css + '\n</style>');
 
-// 2. Dark mode: replace inline fill values on node label-containers
-//    Mermaid 11.15+ writes: style="fill:#fce4ec !important;stroke:#c62828 !important;..."
-//    We replace fill with dark color, keep stroke for category distinction.
+// 2. Dark mode: replace inline fills per category
 if (isDark) {
-  const darkFill = '#1e293b';
-  svg = svg.replace(
-    /class="[^"]*label-container[^"]*"\s+style="([^"]*)"/g,
-    (match) => {
-      return match.replace(/fill:#[0-9a-fA-F]+\s*!important/, `fill:${darkFill} !important`);
-    }
-  );
+  const darkFills = {
+    client:  '#3b1530',
+    gateway: '#3b2a10',
+    service: '#102a3b',
+    data:    '#2a1035',
+    monitor: '#0f2a10',
+  };
+  const defaultDark = '#1e293b';
+
+  // Strategy: find each node <g class="node default CATEGORY" ...>
+  // then find its label-container rect/path inside and replace fill
+  for (const [cat, fill] of Object.entries(darkFills)) {
+    // Match <g class="node default CATEGORY" ...> ... <rect/path class="...label-container..." style="fill:... !important..." ...>
+    const nodeRegex = new RegExp(
+      `<g class="node default ${cat}"[^>]*>[\\s\\S]*?` +
+      `class="[^"]*label-container[^"]*"\\s+style="([^"]*)"`,
+      'g'
+    );
+    svg = svg.replace(nodeRegex, (match, styleContent) => {
+      const newStyle = styleContent.replace(
+        /fill:#[0-9a-fA-F]+\s*!important/,
+        `fill:${fill} !important`
+      );
+      return match.replace(styleContent, newStyle);
+    });
+  }
 }
 
 // 3. Uniform node sizes per category
